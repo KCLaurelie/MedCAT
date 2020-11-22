@@ -2,7 +2,6 @@
 /books/
 /articles/
 /other/
-/data/
 /output/
 /graphics/
 /models/*.dat
@@ -13,6 +12,7 @@ medcat.egg-info/
 build/
 .idea
 venv
+db.sqlite3
 
 #tmp and similar files
 .nfs*

@@ -1,111 +1,100 @@
-# Medical  <img src="https://github.com/w-is-h/cat/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
+# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
 
-A simple tool for concept annotation from UMLS or any other source.
+MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Preprint [arXiv](https://arxiv.org/abs/2010.01165). 
 
-### This is still experimental
+## Demo
+A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
+and contains a small portion of UMLS.
 
+## Tutorial
+A guide on how to use MedCAT is available in the [tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder. Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
 
-## How to use
-There are a few ways to run CAT
+## Papers that use MedCAT
+- [Treatment with ACE-inhibitors is not associated with early severe SARS-Covid-19 infection in a multi-site UK acute Hospital Trust](https://www.researchgate.net/publication/340261837_Treatment_with_ACE-inhibitors_is_not_associated_with_early_severe_SARS-Covid-19_infection_in_a_multi-site_UK_acute_Hospital_Trust)
+- [Supplementing the National Early Warning Score (NEWS2) for anticipating early deterioration among patients with COVID-19 infection](https://www.medrxiv.org/content/10.1101/2020.04.24.20078006v1)
+- [Comparative Analysis of Text Classification Approaches in Electronic Health Records](https://www.researchgate.net/publication/341396173_Comparative_Analysis_of_Text_Classification_Approaches_in_Electronic_Health_Records)
+- [Experimental Evaluation and Development of a Silver-Standard for the MIMIC-III Clinical Coding Dataset](https://arxiv.org/abs/2006.07332)
 
-### PIP Installation
+## Related Projects
+- [MedCATtrainer](https://github.com/CogStack/MedCATtrainer/) - an interface for building, improving and customising a given Named Entity Recognition and Linking (NER+L) model (MedCAT) for biomedical domain text.
+- [MedCATservice](https://github.com/CogStack/MedCATservice) - implements the MedCAT NLP application as a service behind a REST API.
+- [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
+
+## Install using PIP (Requires Python 3.6.1+)
+1. Install MedCAT 
+
 `pip install --upgrade medcat`
 
-#### Please install the langauge models before running anything
-`python -m spacy download en_core_web_sm`
+2. Get the scispacy models:
 
-`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.0/en_core_sci_md-0.2.0.tar.gz`
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz`
 
+3. Download the Vocabulary and CDB from the Models section below
 
-### Building a new Concept Database (.csv) or using an existing one
-First download the vocabulary from Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat)
-
-Now in python3+ 
+4. Quickstart:
 ```python
 from medcat.cat import CAT
 from medcat.utils.vocab import Vocab
-from medcat.prepare_cdb import PrepareCDB
 from medcat.cdb import CDB 
 
 vocab = Vocab()
-
-# Load the vocab model you just downloaded
+# Load the vocab model you downloaded
 vocab.load_dict('<path to the vocab file>')
 
-# If you have an existing CDB
+# Load the cdb model you downloaded
 cdb = CDB()
 cdb.load_dict('<path to the cdb file>') 
 
-# If you need a special CDB you can build one from a .csv file
-preparator = PrepareCDB(vocab=vocab)
-csv_paths = ['<path to your csv_file>', '<another one>', ...] 
-# e.g.
-csv_paths = ['./examples/simple_cdb.csv']
-cdb = preparator.prepare_csvs(csv_paths)
-
-# Save the new CDB for later
-cdb.save_dict("<path to a file where it will be saved>")
-
-# To annotate documents we do
-doc = "My simple document with kidney failure"
+# create cat
 cat = CAT(cdb=cdb, vocab=vocab)
-cat.train = False
-doc_spacy = cat(doc)
-# Entities are in
-doc_spacy._.ents
-# Or to get a json
-doc_json = cat.get_json(doc)
 
-# To have a look at the results:
-from spacy import displacy
-# Note that this will not show all entites, but only the longest ones
-displacy.serve(doc_spacy, style='ent')
+# Test it
+text = "My simple document with kidney failure"
+doc_spacy = cat(text)
+# Print detected entities
+print(doc_spacy.ents)
 
-# To run cat on a large number of documents
-data = [(<doc_id>, <text>), (<doc_id>, <text>), ...]
-docs = cat.multi_processing(data)
+# Or to get an array of entities, this will return much more information
+#and usually easier to use unless you know a lot about spaCy
+doc = cat.get_entities(text)
+print(doc)
 ```
-
-### Training and Fine-tuning
-To fine-tune or train everything from the ground up (excluding word-vectors), you can use the following:
-```python
-# Loadinga CDB or creating a new one is as above.
-
-# To run the training do
-f = open("<some file with a lot of medical text>", 'r')
-# If you want fine tune set it to True, old training will be preserved
-cat.run_training(f, fine_tune=False)
-```
-
-
-## If building from source, the requirements are
-`python >= 3.5` [tested with 3.7, but most likely works with 3+]
-
-All the rest can be instaled using `pip` from the requirements.txt file, by running:
-
-`pip install -r requirements.txt`
-
-
-## Results
-
-| Dataset | SoftF1 | Description |
-| --- | :---: | --- |
-| MedMentions | 0.83 | The whole MedMentions dataset without any modifications or supervised training |
-| MedMentions | 0.828 | MedMentions only for concepts that require disambiguation, or names that map to more CUIs |
-| MedMentions | 0.93 | Medmentions filterd by TUI to only concepts that are a disease |
 
 
 ## Models
-A basic trained model is made public for the vocabulary. It is trained for the 35K entities available in `MedMentions`. It is quite limited
+A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. It is quite limited
 so the performance might not be the best.
 
-Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat) - Built from MedMentions
+Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
+
+CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built from MedMentions
+
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
+
+### SNOMED-CT and UMLS
+If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
 
 
 ## Acknowledgement
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
 
-The dictionary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) In total ~ 800K unique words `For now NOT made publicaly available`
+The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) In total ~ 800K unique words
+
+
+## Powered By
+A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://huggingface.co/) - who made life a million times easier.
+
+
+## Citation
+```
+@misc{kraljevic2019medcat,
+    title={MedCAT -- Medical Concept Annotation Tool},
+    author={Zeljko Kraljevic and Daniel Bean and Aurelie Mascio and Lukasz Roguski and Amos Folarin and Angus Roberts and Rebecca Bendayan and Richard Dobson},
+    year={2019},
+    eprint={1912.10166},
+    archivePrefix={arXiv},
+    primaryClass={cs.CL}
+}
+```

@@ -74,14 +74,40 @@ def clean_text(text):
 
 
 BR_U4 = re.compile("\[[^\]]{0,3}\]")
-CB = re.compile("(^|\s)\([^\)]*\)($|\s)")
+CB = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)(\s)")
+CB_D = re.compile("(\s)\([a-z]+[^\)\(]*\)($)")
 BR = re.compile("(^|\s)\[[^\]]*\]($|\s)")
 PH_RM = re.compile("(\(|\[)(observation|finding|symptoms|disease|observations|disorder|disease/finding)(\)|\])", flags=re.I)
 SKIP_CHARS = re.compile("[\[\]\*]+")
 
-def clean_name(text, stopwords=None):
+
+def clean_drugs_uk(text, stopwords=None, umls=None):
+    _text = CB.sub(" ", text)
+    _text = CB.sub(" ", _text)
+    _text = CB_D.sub(" ", _text)
+    if len(_text) > 8:
+        text = _text
+
+    return clean_name(text, stopwords, umls)
+
+
+def clean_name(text, stopwords=None, umls=False):
     # Remove multi spaces
     text = re.sub("[ ]+", " ", text).strip()
+
+    # If UMLS
+    if umls:
+        # Remove specific things from parentheses
+        text = PH_RM.sub(" ", text)
+
+    # Remove stopwords if requested and <= 5 words in total in the name
+    if stopwords:
+        new_text = ""
+        for word in text.split(" "):
+            if word not in stopwords:
+                new_text += word + " "
+        text = new_text.strip()
+
 
     return text
 
@@ -136,18 +162,27 @@ def clean_snt(text):
 
     return text
 
+def clean_snomed_name(text):
+    # Remove () from end of string
+    text = text.strip()
+    text = re.sub("\([^\)]*\)$", " ", text).strip()
 
-def spacy_tag_punct(doc, skip_stopwords=True):
+    return text
+
+
+def spacy_tag_punct(doc, skip_stopwords=True, keep_punct=[]):
     for token in doc:
         if IS_PUNCT.match(token.text):
             # There can't be punct in a token
             #if it also has text
-            token._.is_punct = True
-            token._.to_skip = True
+            if token.text not in keep_punct:
+                token._.is_punct = True
+                token._.to_skip = True
 
         # Skip if specific strings
         if TO_SKIP.match(token.lower_):
             token._.to_skip = True
+
 
         # Skip if stopword
         if skip_stopwords and token.is_stop:
